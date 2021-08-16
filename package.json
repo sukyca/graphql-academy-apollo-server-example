@@ -5,12 +5,16 @@
   "main": "index.js",
   "scripts": {
     "start": "node .",
+    "dev": "nodemon .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "apollo-server": "^3.1.2",
-    "graphql": "^15.5.1"
+    "apollo-server": "^2.3.1",
+    "graphql": "^14.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.9"
   }
 }

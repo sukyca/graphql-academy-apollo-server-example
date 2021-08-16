@@ -1,49 +1,115 @@
-const { ApolloServer, gql } = require('apollo-server');
+const { ApolloServer, gql, PubSub } = require("apollo-server");
 
-// A schema is a collection of type definitions (hence "typeDefs")
-// that together define the "shape" of queries that are executed against
-// your data.
+// Type checking
+// Query vs. mutation
+// Objects
+// Arrays
+// Arguments
+
+// CRUD
+
 const typeDefs = gql`
-  # Comments in GraphQL strings (such as this one) start with the hash (#) symbol.
-
-  # This "Book" type defines the queryable fields for every book in our data source.
-  type Book {
-    title: String
-    author: String
+  type Query {
+    hello(name: String): String
+    user: User
+    errorLogs: [Error!]!
   }
 
-  # The "Query" type is special: it lists all of the available queries that
-  # clients can execute, along with the return type for each. In this
-  # case, the "books" query returns an array of zero or more Books (defined above).
-  type Query {
-    books: [Book]
+  type User {
+    id: ID!
+    username: String
+    firstLetterOfUsername: String
+  }
+
+  type Error {
+    field: String!
+    message: String!
+  }
+
+  type RegisterResponse {
+    user: User
+  }
+
+  input UserInfo {
+    username: String!
+    password: String!
+    age: Int
+  }
+
+  type Mutation {
+    register(userInfo: UserInfo!): RegisterResponse!
+    login(userInfo: UserInfo!): String!
+  }
+
+  type Subscription {
+    newUser: User!
   }
 `;
 
-const books = [
-  {
-    title: 'The Awakening',
-    author: 'Kate Chopin',
-  },
-  {
-    title: 'City of Glass',
-    author: 'Paul Auster',
-  },
-];
+const NEW_USER = "NEW_USER";
 
-// Resolvers define the technique for fetching the types defined in the
-// schema. This resolver retrieves books from the "books" array above.
 const resolvers = {
-  Query: {
-    books: () => books,
+  Subscription: {
+    newUser: {
+      subscribe: (_, __, { pubsub }) => pubsub.asyncIterator(NEW_USER)
+    }
   },
+  User: {
+    firstLetterOfUsername: parent => {
+      return parent.username ? parent.username[0] : null;
+    }
+    // username: parent => { return parent.username;
+    // }
+  },
+  Query: {
+    hello: (parent, { name }) => {
+      return `hey ${name}`;
+    },
+    user: () => ({
+      id: 1,
+      username: "tom"
+    }),
+    errorLogs: () => ([
+      {
+        field: "username",
+        message: "bad"
+      },
+      {
+        field: "username2",
+        message: "bad2"
+      }
+    ])
+  },
+  Mutation: {
+    login: async (parent, { userInfo: { username } }, context) => {
+      // check the password
+      // await checkPassword(password);
+      return username;
+    },
+    register: (_, { userInfo: { username } }, { pubsub }) => {
+      const user = {
+        id: 1,
+        username
+      };
+
+      pubsub.publish(NEW_USER, {
+        newUser: user
+      });
+
+      return {
+        user
+      };
+    }
+  }
 };
 
-// The ApolloServer constructor requires two parameters: your schema
-// definition and your set of resolvers.
-const server = new ApolloServer({ typeDefs, resolvers });
+const pubsub = new PubSub();
 
-// The `listen` method launches a web server.
-server.listen().then(({ url }) => {
-  console.log(`🚀  Server ready at ${url}`);
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  context: ({ req, res }) => ({ req, res, pubsub })
 });
+
+server.listen(4001)
+  .then(({ url }) => console.log(`Server started at ${url}`));

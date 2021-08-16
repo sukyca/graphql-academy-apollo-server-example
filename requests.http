@@ -42,9 +42,4 @@ query {
   }
 }
 
-# {
-#     "name": "vscode-restclient",
-#     "owner": "Huachao"
-# }
-
 ###
