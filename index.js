@@ -82,7 +82,7 @@ const resolvers = {
 const pubsub = new PubSub();
 
 const timer = setInterval(() => {
-  pubsub.publish(PING, {
+  pubsub.publish(EVENTS.PING, {
     listenForPing: `${Date.now()}`,
   });
 }, 3000);
