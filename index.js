@@ -8,7 +8,7 @@ const {
 } = require('./errors');
 const { formatError } = require('./errors/formatError');
 
-const { NEW_USER } = require('./src/events');
+const EVENTS = require('./src/events');
 const { typeDefs } = require('./src/schema');
 
 const checkPassword = require('./src/checkPassword'); 
@@ -26,7 +26,7 @@ const users = [
 const resolvers = {
   Subscription: {
     newUser: {
-      subscribe: (_, __, { pubsub }) => pubsub.asyncIterator(NEW_USER)
+      subscribe: (_, __, { pubsub }) => pubsub.asyncIterator(EVENTS.NEW_USER)
     }
   },
   User: {
@@ -68,7 +68,7 @@ const resolvers = {
         username
       };
 
-      pubsub.publish(NEW_USER, {
+      pubsub.publish(EVENTS.NEW_USER, {
         newUser: user
       });
 
@@ -80,6 +80,12 @@ const resolvers = {
 };
 
 const pubsub = new PubSub();
+
+const timer = setInterval(() => {
+  pubsub.publish(PING, {
+    listenForPing: `${Date.now()}`,
+  });
+}, 3000);
 
 const server = new ApolloServer({
   typeDefs,
