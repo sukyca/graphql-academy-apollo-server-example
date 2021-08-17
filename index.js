@@ -1,52 +1,27 @@
-const { ApolloServer, gql, PubSub } = require("apollo-server");
+const { ApolloServer, PubSub } = require("apollo-server");
 
-// Type checking
-// Query vs. mutation
-// Objects
-// Arrays
-// Arguments
+// Error handling
+const {
+  ERRORS,
+  ERROR_AUTHENTICATION_DATA_IS_MISSING,
+  errorDescriptor
+} = require('./errors');
+const { formatError } = require('./errors/formatError');
 
-// CRUD
+const { NEW_USER } = require('./src/events');
+const { typeDefs } = require('./src/schema');
 
-const typeDefs = gql`
-  type Query {
-    hello(name: String): String
-    user: User
-    errorLogs: [Error!]!
+const checkPassword = require('./src/checkPassword'); 
+
+const users = [
+  {
+    id: 1,
+    username: 'Pero',
+    password: '$2a$12$O1TQA8DweDP8RmnU89yHSeGALT.hm6DWBEQQ/iqgsqDO4AAwMhSZa',
+    admin: true,
   }
+];
 
-  type User {
-    id: ID!
-    username: String
-    firstLetterOfUsername: String
-  }
-
-  type Error {
-    field: String!
-    message: String!
-  }
-
-  type RegisterResponse {
-    user: User
-  }
-
-  input UserInfo {
-    username: String!
-    password: String!
-    age: Int
-  }
-
-  type Mutation {
-    register(userInfo: UserInfo!): RegisterResponse!
-    login(userInfo: UserInfo!): String!
-  }
-
-  type Subscription {
-    newUser: User!
-  }
-`;
-
-const NEW_USER = "NEW_USER";
 
 const resolvers = {
   Subscription: {
@@ -84,6 +59,7 @@ const resolvers = {
     login: async (parent, { userInfo: { username } }, context) => {
       // check the password
       // await checkPassword(password);
+      throw new Error(errorDescriptor(ERROR_AUTHENTICATION_DATA_IS_MISSING));
       return username;
     },
     register: (_, { userInfo: { username } }, { pubsub }) => {
@@ -108,7 +84,9 @@ const pubsub = new PubSub();
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  context: ({ req, res }) => ({ req, res, pubsub })
+  context: ({ req, res }) => ({ req, res, pubsub }),
+  // customFormatErrorFn: formatError,
+  formatError,
 });
 
 server.listen(4001)
