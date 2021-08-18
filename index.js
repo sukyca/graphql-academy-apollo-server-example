@@ -1,38 +1,45 @@
 const { ApolloServer, PubSub } = require("apollo-server");
 
-// Error handling
+const path = require("path");
+require("dotenv").config({
+  path:
+    typeof process.env.DOTENV_PATH !== "undefined"
+      ? path.resolve(process.cwd(), process.env.DOTENV_PATH)
+      : path.resolve(process.cwd(), ".env"),
+});
+
 const {
   ERRORS,
   ERROR_AUTHENTICATION_DATA_IS_MISSING,
-  errorDescriptor
-} = require('./errors');
-const { formatError } = require('./errors/formatError');
+  errorDescriptor,
+} = require("./errors");
+const { formatError } = require("./errors/formatError");
 
-const EVENTS = require('./src/events');
-const { typeDefs } = require('./src/schema');
+const EVENTS = require("./src/events");
+const { typeDefs } = require("./src/schema");
 
-const checkPassword = require('./src/checkPassword'); 
+const checkPassword = require("./src/checkPassword");
 
 const users = [
   {
     id: 1,
-    username: 'Pero',
-    password: '$2a$12$O1TQA8DweDP8RmnU89yHSeGALT.hm6DWBEQQ/iqgsqDO4AAwMhSZa',
+    username: "Pero",
+    password: "$2a$12$O1TQA8DweDP8RmnU89yHSeGALT.hm6DWBEQQ/iqgsqDO4AAwMhSZa",
     admin: true,
-  }
+  },
 ];
-
 
 const resolvers = {
   Subscription: {
     newUser: {
-      subscribe: (_, __, { pubsub }) => pubsub.asyncIterator(EVENTS.NEW_USER)
-    }
+      subscribe: (_parent, _args, { pubsub }) =>
+        pubsub.asyncIterator(EVENTS.NEW_USER),
+    },
   },
   User: {
-    firstLetterOfUsername: parent => {
+    firstLetterOfUsername: (parent) => {
       return parent.username ? parent.username[0] : null;
-    }
+    },
     // username: parent => { return parent.username;
     // }
   },
@@ -42,41 +49,43 @@ const resolvers = {
     },
     user: () => ({
       id: 1,
-      username: "tom"
+      username: "tom",
     }),
-    errorLogs: () => ([
+    errorLogs: () => [
       {
         field: "username",
-        message: "bad"
+        message: "bad",
       },
       {
         field: "username2",
-        message: "bad2"
-      }
-    ])
+        message: "bad2",
+      },
+    ],
   },
   Mutation: {
-    login: async (parent, { userInfo: { username } }, context) => {
-      // check the password
-      // await checkPassword(password);
+    login: async (parent, { userInfo: { username, password } }, context) => {
+      await checkPassword(password);
       throw new Error(errorDescriptor(ERROR_AUTHENTICATION_DATA_IS_MISSING));
       return username;
     },
-    register: (_, { userInfo: { username } }, { pubsub }) => {
+    register: (_, { userInfo: { username, password } }, { pubsub }) => {
       const user = {
         id: 1,
-        username
+        username,
+        password,
       };
 
+      users.push(user);
+
       pubsub.publish(EVENTS.NEW_USER, {
-        newUser: user
+        newUser: user,
       });
 
       return {
-        user
+        user,
       };
-    }
-  }
+    },
+  },
 };
 
 const pubsub = new PubSub();
@@ -91,9 +100,9 @@ const server = new ApolloServer({
   typeDefs,
   resolvers,
   context: ({ req, res }) => ({ req, res, pubsub }),
-  // customFormatErrorFn: formatError,
   formatError,
 });
 
-server.listen(4001)
-  .then(({ url }) => console.log(`Server started at ${url}`));
+const port = process.env.PORT;
+
+server.listen(port).then(({ url }) => console.log(`Server started at ${url}`));
